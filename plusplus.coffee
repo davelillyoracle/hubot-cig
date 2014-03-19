@@ -8,36 +8,40 @@
 # Configuration:
 #
 # Commands:
-#   <name>++
-#   <name>--
-#   hubot score <name>
-#   hubot top <amount>
-#   hubot bottom <amount>
+#   <name>++ - add points to a user
+#   <name>-- - subtract points from a user
+#   hubot scores - get the leaderboard
+#   hubot reset - (admin only) reset the scoreboard
 #
 # Author:
 #   davelilly!
 
-nicknames = {
-  'dave': 'dave',
-  'lilly': 'dave',
-  'davelilly': 'dave',
-  'brian': 'brian',
-  'celenza': 'brian',
-  'briancelenza': 'brian',
-  'bcelenza': 'brian',
-  'rich': 'rich',
-  'meyer': 'rich',
-  'richmeyer': 'rich',
-  'johnny': 'johnny',
-  'crivello': 'johnny',
-  'johnnycrivello': 'johnny'
-}
+users = [ 'dave lilly', 'brian celenza', 'rich meyer', 'johnny crivello' ]
+nicknames = {}
 
 _ = require("underscore")
-clark = require("clark").clark
+clark = require("clark")
 
 class ScoreKeeper
   constructor: (@robot) ->
+    for name in users
+      nicknames[name] = name
+
+      # first name
+      nicknames[name.split(" ")[0]] = name
+
+      # last name
+      nicknames[name.split(" ")[1]] = name
+
+      # firstlast name
+      nicknames[name.replace(" ", "")] = name
+
+      # first initial last name
+      nicknames[name.slice(0, 1) + name.split(" ")[1]] = name
+
+      # first initial last initial
+      nicknames[name.slice(0, 1) + name.split(" ")[1].slice(0, 1)] = name
+
     @cache =
       scoreLog: {}
       scores: {}
@@ -56,7 +60,11 @@ class ScoreKeeper
       @cache.scores = @robot.brain.data.scores
       @cache.scoreLog = @robot.brain.data.scoreLog    
 
-  getUser: (user) ->
+      for name in users
+        @getUser(name)
+
+  getUser: (nick) ->
+    user = nicknames[nick]
     @cache.scores[user] ||= 0
     user
 
@@ -112,17 +120,19 @@ class ScoreKeeper
   length: () ->
     @cache.scoreLog.length
 
-  top: (amount) ->
-    tops = []
+  scores: ->
+    scores = []
 
     for name, score of @cache.scores
-      tops.push(name: name, score: score)
+      scores.push(name: name.split(" ")[0], score: score)
 
-    tops.sort((a,b) -> b.score - a.score).slice(0,amount)
+    scores.sort((a,b) -> b.score - a.score)
 
-  bottom: (amount) ->
-    all = @top(@cache.scores.length)
-    all.sort((a,b) -> b.score - a.score).reverse().slice(0,amount)
+  username: (nick) ->
+    nicknames[nick]
+
+  shortname: (nick) ->
+    nicknames[nick].split(" ")[0]
 
 module.exports = (robot) ->
   scoreKeeper = new ScoreKeeper(robot)
@@ -131,42 +141,33 @@ module.exports = (robot) ->
     name = msg.match[1].trim().toLowerCase()
     from = msg.message.user.name.toLowerCase()
 
-    username = nicknames[name]
-    newScore = scoreKeeper.add(username, from)
+    newScore = scoreKeeper.add(name, from)
 
-    if newScore? then msg.send "#{username} has #{newScore} points."
+    if newScore? then msg.send "#{scoreKeeper.shortname(name)} has #{newScore} points."
 
   robot.hear /([\w\S]+)([\W\s]*)?(\-\-)$/i, (msg) ->
     name = msg.match[1].trim().toLowerCase()
     from = msg.message.user.name.toLowerCase()
 
-    username = nicknames[name]
     newScore = scoreKeeper.subtract(name, from)
 
-    if newScore? then msg.send "#{username} has #{newScore} points."
+    if newScore? then msg.send "#{scoreKeeper.shortname(name)} has #{newScore} points."
 
-  robot.respond /score (for\s)?(.*)/i, (msg) ->
-    name = msg.match[2].trim().toLowerCase()
-    score = scoreKeeper.scoreForUser(name)
+  robot.respond /scores/i, (msg) ->
+    scores = scoreKeeper.scores()
 
-    msg.send "#{name} has #{score} points."
-
-  robot.respond /(top|bottom) (\d+)/i, (msg) ->
-    amount = parseInt(msg.match[2])
+    scorelist = []
     message = []
+    for own place, val of scores
+      message.push("#{parseInt(place) + 1}. #{val['name']} (#{val['score']} points)")
+      scorelist.push(val)
 
-    tops = scoreKeeper[msg.match[1]](amount)
-
-    for i in [0..tops.length-1]
-      message.push("#{i+1}. #{tops[i].name} : #{tops[i].score}")
-
-    if(msg.match[1] == "top")
-      graphSize = Math.min(tops.length, Math.min(amount, 20))
-      message.splice(0, 0, clark(_.first(_.pluck(tops, "score"), graphSize)))
-
+    message.splice(0, 0, clark(_.pluck(scorelist, "score"), scores.length))
     msg.send message.join("\n")
 
-  robot.respond /clear scores/i, (msg) ->
-    from = msg.message.user.mention_name.toLowerCase()
-    if (from == "davelilly")
-      msg.send "clear scores?"
+  robot.respond /reset/i, (msg) ->
+    from = msg.message.user.name.toLowerCase()
+
+    if (from == "dave lilly")
+      scoreKeeper.clear()
+      msg.send('Scores cleared.')
