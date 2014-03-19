@@ -167,6 +167,6 @@ module.exports = (robot) ->
     msg.send message.join("\n")
 
   robot.respond /clear scores/i, (msg) ->
-    from = msg.message.user.name.toLowerCase()
-    if (from == "bave lilly")
+    from = msg.message.user.mention_name.toLowerCase()
+    if (from == "davelilly")
       msg.send "clear scores?"
