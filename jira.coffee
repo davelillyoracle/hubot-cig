@@ -185,7 +185,8 @@ module.exports = (robot) ->
     search msg, msg.match[2], (text) ->
       msg.reply text
   
-  robot.respond /([^\w\-]|^)(\w+-[0-9]+)(?=[^\w]|$)/ig, (msg) ->
+#  robot.respond /([^\w\-]|^)(\w+-[0-9]+)(?=[^\w]|$)/ig, (msg) ->
+  robot.respond /.*(\w+-[0-9]+)(?=[^\w]|$)/ig, (msg) ->
     if msg.message.user.id is robot.name
       return
 
