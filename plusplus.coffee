@@ -168,5 +168,5 @@ module.exports = (robot) ->
 
   robot.respond /clear scores/i, (msg) ->
     from = msg.message.user.name.toLowerCase()
-    if (from === "dave lilly")
+    if (from == "dave lilly")
       msg.send "clear scores?"
