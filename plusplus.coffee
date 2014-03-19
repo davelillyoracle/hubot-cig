@@ -49,6 +49,13 @@ class ScoreKeeper
       @cache.scores = @robot.brain.data.scores
       @cache.scoreLog = @robot.brain.data.scoreLog
 
+  clear: ->
+      @robot.brain.data.scores = {}
+      @robot.brain.data.scoreLog = {}
+
+      @cache.scores = @robot.brain.data.scores
+      @cache.scoreLog = @robot.brain.data.scoreLog    
+
   getUser: (user) ->
     @cache.scores[user] ||= 0
     user
@@ -125,18 +132,18 @@ module.exports = (robot) ->
     from = msg.message.user.name.toLowerCase()
 
     username = nicknames[name]
-    msg.send "points added to #{username}!"
+    newScore = scoreKeeper.add(username, from)
 
-    # newScore = scoreKeeper.add(name, from)
-
-    # if newScore? then msg.send "#{name} has #{newScore} points."
+    if newScore? then msg.send "#{username} has #{newScore} points."
 
   robot.hear /([\w\S]+)([\W\s]*)?(\-\-)$/i, (msg) ->
     name = msg.match[1].trim().toLowerCase()
     from = msg.message.user.name.toLowerCase()
 
+    username = nicknames[name]
     newScore = scoreKeeper.subtract(name, from)
-    if newScore? then msg.send "#{name} has #{newScore} points."
+
+    if newScore? then msg.send "#{username} has #{newScore} points."
 
   robot.respond /score (for\s)?(.*)/i, (msg) ->
     name = msg.match[2].trim().toLowerCase()
@@ -159,3 +166,6 @@ module.exports = (robot) ->
 
     msg.send message.join("\n")
 
+  robot.respond /clear scores/i, (msg) ->
+    from = msg.message.user.name.toLowerCase()
+    msg.send "#{from}, do you want me to clear scores?"
